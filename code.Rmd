@@ -20,7 +20,7 @@ knitr::opts_chunk$set(message = FALSE)
 knitr::opts_chunk$set(cache = FALSE)
 knitr::opts_chunk$set(fig.width = 5)
 knitr::opts_chunk$set(fig.height = 5)
-knitr::opts_knit$set(root.dir = 'C:/Users/2PAC/Documents/R/Predictive_Modeling/HW1')
+knitr::opts_knit$set(root.dir = 'C:/Users/R/Predictive_Modeling')
 ```
 
 ```{r packages, echo=FALSE, results='hide'}
