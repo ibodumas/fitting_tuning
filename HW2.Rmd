@@ -1,0 +1,224 @@
+---
+title: "Over-Fitting and Model Tuning"
+author: "Ibrahim Odumas Odufowora"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    css: min.css
+    highlight: textmate
+    theme: null
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(prompt = FALSE)
+knitr::opts_chunk$set(error = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(cache = FALSE)
+knitr::opts_chunk$set(fig.width = 5)
+knitr::opts_chunk$set(fig.height = 5)
+knitr::opts_knit$set(root.dir = 'C:/Users/2PAC/Documents/R/Predictive_Modeling/HW1')
+```
+
+```{r packages, echo=FALSE, results='hide'}
+list.packages = c("ggplot2", "mlbench", "lattice", "car", "knitr", "caret", "e1071", "DT", "gplots", "ROCR", "klaR", "corrplot", "AppliedPredictiveModeling", "data.table")
+list.packages = unique(list.packages)
+install.pack = list.packages %in% installed.packages()
+if(length(list.packages[!install.pack]) > 0) 
+  install.p = install.packages(list.packages[!install.pack])
+library = lapply(list.packages, require, character.only=TRUE)
+```
+
+```{r myFunctions, echo=FALSE, results='hide'}
+#for multiple density plot #the data should be melt.
+my_densityplot = function(meltData)
+{
+  densityplot(~value|variable, data = meltData, scales = list(x = list(relation = "free"), y = list(relation = "free")), adjust = 1.25, pch = "|", xlab = "Predictor")
+}
+
+#for multiple histogram #the data should be melt
+my_multipleHistogram = function(meltData, bins)
+{
+  ggplot(data = melt(meltData), mapping = aes(x = value)) + geom_histogram(bins = bins) + facet_wrap(~variable, scales = 'free_x')
+}
+
+#for multiple correlation plots with correlation coefficient & p-value calculation
+panel.cor <- function(x, y, digits = 2, cex.cor, ...)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  # correlation coefficient
+  r <- cor(x, y)
+  txt <- format(c(r, 0.123456789), digits = digits)[1]
+  txt <- paste("r= ", txt, sep = "")
+  text(0.5, 0.6, txt)
+
+  # p-value calculation
+  p <- cor.test(x, y)$p.value
+  txt2 <- format(c(p, 0.123456789), digits = digits)[1]
+  txt2 <- paste("p= ", txt2, sep = "")
+  if(p<0.01) txt2 <- paste("p= ", "<0.01", sep = "")
+  text(0.5, 0.4, txt2)
+}
+```
+
+#Question 1: Music Genre Dataset: 'http://tunedit.org/challenge/music-retrieval/genres'
+![The frequency distribution of genres in the music data.](q1a.png)
+
+- The dimension of the dataset is 12495(samples) by 191(predictors).
+
+##Q1(a) Data splitting method(s) for these data?:
+Using the information above, the number of samples (12495) is largely greater than the number of predictors (195). Hence, it is visible to split the dataset into training and test set, this will enable the evaluation of model performance and tuning parameter selection. 
+
+Given the imbalance in the distribution of classes in the response variable, classical has the highest percentage and metal with the lowest, it might be suggested to use stratified random sampling method to split the dataset.
+
+Also, because of the large sample size, resampling or cross-validation techniques might be used to estimate model performance. K-fold cross-validation with k as 5 or 10 would be less computationally expensive.
+
+##Q1(b) Code for implementing the approach(es):
+The createDataPartition function in the caret package would be used to split the dataset into training and test datasets:
+
+- trainingRows = createDataPartition(classes, p = .80, list= FALSE)
+
+The same createDataPartition function in the caret package would also be used to divide the training dataset into 5 or 10 folds such that the class distribution is sustainably maintained:
+
+- partitions = createDataPartition(trainClasses, k = 5, returnTrain = TRUE)
+
+Seed should be set for reproducibility.
+
+
+#Question 2: Permeability Dataset:
+![The frequency distribution of permeability value in the dataset.](q2a.png)
+
+- The dimension of the dataset is 165(samples) by 1107(predictors).
+
+##Q2(a) Data splitting method(s) for these data?:
+Using the information above, the number of samples (165) is largely less than the number of predictors (1107). Because the sample size is small, it is not advised to split the dataset into training and test set, splitting the dataset into testing and training sets might affect the ability to get a good linkage between the predictors and the response variables. In this case, resampling techniques should be used to select tuning parameters and estimate performance.
+
+From the figure above, the distribution of permeability value is skewed. Hence, given the imbalance in the distribution of the response variable, it might be suggested to use stratified random sampling method.
+
+##Q2(b) Code for implementing the approach(es):
+The createDataPartition function in the caret package would be used to create stratified sampling such that the class distribution is sustainably maintained. The following code would be used to create multiple iterations of 5 folds cross-validation:
+
+- multi_folds = createMultiFolds(permeability, k = 5, times = 20)
+
+Seed should be set for reproducibility.
+
+#Question 3: Partial Least Square (PLS):
+
+```{r}
+data(ChemicalManufacturingProcess)
+```
+
+##Q3(a): Calculate the PLS components provides the most parsimonious model:
+![](q3a.png)
+```{r}
+#set.seed(7658)
+#pls_chem = train(Yield ~ ., data = ChemicalManufacturingProcess, method = "pls", preProc = c("center", "scale"), tuneLength = 10, trControl = trainControl(method = "repeatedcv", repeats = 5), na.action = na.pass)
+#r2_val <- pls_chem$results[, c("ncomp", "Rsquared", "RsquaredSD")]
+#r2_val$RsquaredSEM <- r2_val$RsquaredSD/sqrt(length(pls_chem$control$index))
+```
+
+From the table above, the best setting is at 4 PLS, at one standard error it has the following boundaries: 
+
+ - lower boundary 0.545 - 0.0308 = 0.5142
+ - upper boundary 0.545 + 0.0308 = 0.5758
+ 
+Setting with 3 PLS (0.534) has R^2 that is better than the lower boundary (0.5142), hence, a model with 3 PLS components is the most parsimonious model (simpler).
+
+##Q3(b): Compute tolerance values and estimate the optimal PLS component at 10% loss of R^2:
+```{r}
+error = c(0.0272,  0.0298,  0.0302,  0.0308, 0.0322,  0.0327,  0.0333,  0.0330, 0.0326, 0.0324)
+mean = c(0.444,  0.500, 0.533, 0.545,  0.542, 0.537, 0.534, 0.534, 0.520, 0.507)
+toler = round((mean - 0.545) / 0.545, 4)
+```
+
+![Computed tolerance values](q3b.png)
+
+Given that a 10% loss is accepted, then the best optimal number of PLS components is at 2 PLS components.
+
+##Q3(c): Select the model(s) that optimizes R^2:
+![Computed tolerance values](q3c.png)
+
+From the figure above the random forest has the highest value of R^2, albeit, the R^2 value for the SVM is relatively close to that of the random forest, with some overlap. Thus, the best models in terms of optimal R^2 values are random forest and support vector machine.
+
+##Q3(d): Select model(s) based on prediction time, model complexity, and R2 estimates:
+
+Given each model's prediction time, model complexity, and R^2 estimates the SVM should be chosen since it is fairly fast and its R^2 is relatively close to the best R^2. However, this decision is subjective, the PLS and regression tree models could also be considered if the predictive function is needed to be recorded, although they give substantial low R^2.
+
+#Question 4: Oil:
+```{r}
+data(oil)
+#str(oilType) 
+tb = round(table(oilType) / 96, 2)
+barchart(tb, horizontal = F, main = 'Percentage Distribution of in original samples')
+dist = as.data.frame(round(table(oilType) / 96, 2))
+#kable(dist, caption = 'Percentage Distribution of in original samples')
+```
+
+##Q4(a) Sampling using random sample:
+```{r}
+sampNum = 60
+set.seed(23123)
+list_table = vector(mode = "list", length = 30)
+
+#tb = round(table(oilType) / 96, 2)
+#barchart(tb, horizontal = F)
+
+for(i in 1:length(list_table))
+  list_table[[i]] = round(table(sample(oilType, size = sampNum)) / 60, 2)
+  #list_table[[i]] = sample(oilType, size = sampNum))
+
+barchart(list_table[[1]], horizontal = F, main = 'Percentage distribution in random samples - 1')
+barchart(list_table[[2]], horizontal = F, main = 'Percentage distribution in random samples - 2')
+#cat("Percentage distribution in random samples")
+#head(list_table, 5)
+```
+
+Frequencies in the random sample differ from that of the original samples. 30 different random samplings of 60 samples each were further looked, yet there frequencies distribution differ from the original sample. In some instance, the frequency of 'G' is zero, hence, the training set will not capture all the classes. This might be ineffective for modeling.
+
+##Q4(b) Sampling using the caret package function createDataPartition to create stratified random sample:
+```{r}
+seed.set = 234901
+list_caret = createDataPartition(oilType, p = 0.59, times = 30)
+perc_caret = lapply(list_caret, function(x, y) round(table(y[x])/60, 2), y = oilType)
+
+barchart(perc_caret[[1]], horizontal = F, main = 'Distribution using createDataPartition - 1')
+barchart(perc_caret[[2]], horizontal = F, main = 'Distribution using createDataPartition - 2')
+#cat("Percentage distribution using createDataPartition")
+#head(perc_caret, 5)
+```
+
+The createDataPartition function generates random samples that are significantly closer to the original sample in terms of the frequency distribution. It tends to relatively maintain the frequencies distribution in the original dataset. When compared with the use of random sampling, it produces a better result in terms of keeping the frequencies distribution of the original dataset. Also, this tends to include all the classes in the random sample selection.
+
+##Q4(c) Determining the performance of a model with small sample size:
+In any case, where there is small sample size, it might be inefficient to partition the dataset into train and test datasets. This is because the train set might not be sufficient to capture all aspects of the predictors.
+
+Hence, LOOCV would be a reasonable option to determine the performance of the model.
+
+##Q4(d) Understanding the uncertainty of a test set using binomial test:
+```{r}
+sample_size = c(10, 15, 20, 25, 30, 20, 20, 20, 20, 20)
+accuracy = c(0.9, 0.9, 0.9, 0.9, 0.9, 0.75, 0.80, 0.85, 0.9, 0.95)
+bin1 = binom.test(round(accuracy[1]*sample_size[1]), sample_size[1])
+dt = t(as.data.frame(round(bin1$conf.int, 3)))
+
+for(i in 2:10)
+{
+  bin = binom.test(round(accuracy[i]*sample_size[i]), sample_size[i])
+  new_tb = t(as.data.frame(round(bin$conf.int, 3)))
+  dt = rbind(dt, new_tb)
+}
+
+rownames(dt) = NULL
+colnames(dt) = c('lower_bound', 'upper_bound')
+
+dt1 = data.frame(sample_size, accuracy)
+dt2 = cbind(dt1, dt)
+dt2$width = dt2$upper_bound - dt2$lower_bound
+kable(dt2, caption = "Table of width using diffrent sample size and accuracy")
+```
+
+From the table above, the width of the confidence interval for reduces as the sample size increases. Likewise, the width reduces as the accuracy increases. Hence, if accuracy cannot be increased, then increased sample size can aid a better model. Also, if sample size cannot be increased, then increased accuracy would result in a better model.
